@@ -5,7 +5,7 @@ import cv2 as cv
 # local file imports
 from findTracks import Centroid
 
-MIN_RADIUS = 4
+MIN_RADIUS = 1.5
 
 def main():
 
@@ -19,20 +19,21 @@ def main():
     backSub = cv.createBackgroundSubtractorMOG2()
 
     # load video
-    videoPath = r'E:\research\birdDrone\droneVideos\flight5.mp4'
+    videoPath = r'E:\research\birdDrone\droneVideos\flight1.mp4'
     capture = cv.VideoCapture(videoPath)
     if not capture.isOpened():
         print('Unable to open: ' + videoPath)
         exit(0)
 
     # loop through 60 frames of the video
-    for i in range(100000):
+    for i in range(3000):
         ret, frame = capture.read()
         if frame is None:
             break
 
         # skip the first few frames
-        if i < 0:
+        print(i)
+        if i < 400:
             continue
 
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -40,8 +41,8 @@ def main():
         fgMask = backSub.apply(blur, learningRate=0.006)
         _,fgMask = cv.threshold(fgMask, 1, 255, cv.THRESH_BINARY)
 
-        # initially train on 1 second of data
-        if i < 30:
+        # train on 30 frame (1 second of data)
+        if i < 500:
             continue
 
         # once the background subtractor has been trained, start processessing the images
@@ -51,8 +52,9 @@ def main():
         smaller_i = 0
 
         # if the camera moves a little bit, thousands of contours are drawn
-        # if len(contours) > 100:
-            # continue
+        if len(contours) > 3000:
+            print('too many')
+            continue
 
         for cnt in contours:
             _, r = cv.minEnclosingCircle(cnt)
@@ -78,15 +80,13 @@ def main():
         cv.putText(frame, f'{i}', (0,20), cv.FONT_HERSHEY_PLAIN, 1.4, (255,255,0), 2)
 
         # resize the images 
-        scale_percent = 50 # percent of original size
-        # print(frame.shape)
-        width = int(frame.shape[1] * scale_percent / 100)
-        height = int(frame.shape[0] * scale_percent / 100)
+        width = int(frame.shape[1] * 0.5)
+        height = int(frame.shape[0] * 0.5)
         dim = (width, height)
   
         # resize image
-        resizedFrame = cv.resize(frame, dim, interpolation = cv.INTER_AREA)
-        resizedMask = cv.resize(fgMask, dim, interpolation = cv.INTER_AREA)
+        resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
+        resizedMask = cv.resize(fgMask, dim, interpolation=cv.INTER_AREA)
 
         # convert black and white to a "color" image to save to video
         resizedMask = cv.merge([resizedMask,resizedMask,resizedMask])

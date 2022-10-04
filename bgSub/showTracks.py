@@ -7,32 +7,34 @@ def main():
 
     trackerRecording = cv.VideoWriter('trackerRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
     # load video
-    videoPath = r'E:\research\birdDrone\droneVideos\flight5.mp4'
+    videoPath = r'E:\research\birdDrone\droneVideos\flight1.mp4'
     capture = cv.VideoCapture(videoPath)
     if not capture.isOpened():
         print('Unable to open: ' + videoPath)
         exit(0)
 
     # loop through 100 frames of the video
-    for i in range(1100):
+    for i in range(3000):
         ret, frame = capture.read()  
         if frame is None:
             break
 
         # skip the first 1000 frames
-        if i < 30:
+        if i < 500:
             continue
         
-        frameNum = i - 30
+        frameNum = i - 500
         for track_id, track in enumerate(tracks):
             if centroid := track.getCentroid(frameNum):
-                col = (0,255,0)
+                col = (187*(track_id+1)%255,287*(track_id+1)%255,387*(track_id+1)%255)
                 radius = 4+int(np.sqrt(centroid.area/np.pi))
                 cv.circle(frame, centroid.point, radius, col,2)
                 cv.putText(frame, f'{track_id}', centroid.point+(2,0)+(radius,0), cv.FONT_HERSHEY_PLAIN, 2, col, 2)
 
                 # draw trail (super hacky)
                 for i in range(frameNum - track.startFrame - 1):
+                    if i+1 >= len(track.centroids):
+                        break
                     c0 = track.centroids[i]
                     c1 = track.centroids[i+1]
                     cv.line(frame, c0.point, c1.point, col, 2)

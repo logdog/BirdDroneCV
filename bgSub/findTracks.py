@@ -1,3 +1,4 @@
+from cgitb import reset
 from json.encoder import INFINITY
 import numpy as np
 import math
@@ -71,14 +72,13 @@ class AerialTrack:
 ###########################################################################################
 def main():
     centroidHistory = np.load('centroidHistory.npy',allow_pickle=True)
-    print(centroidHistory)
     
     # active means track was updated last frame
     stale_tracks = []
     active_tracks = []
 
     EPSILON = 0
-    DELTA = 100
+    DELTA = 20
 
     for frameNumber, centroids_in_frame in enumerate(centroidHistory):
         
@@ -104,9 +104,12 @@ def main():
 
         # UPDATE CENTROIDS
         # print(f'\nFrame Number = {frameNumber}')
-        # print(f'Centroids in Frame = {(centroids_in_frame)}')
         new_tracks = []
         all_candidate_tracks = []
+
+        updated_track_ids = []
+        updated_centroid_ids = []
+
         for centroid_index, centroid in enumerate(centroids_in_frame):
 
             # create list of AerialTracks within some distance < delta
@@ -121,6 +124,7 @@ def main():
             # if no objects < delta, create a new AerialTrack
             if not candidate_tracks:
                 new_tracks.append(AerialTrack(centroid, frameNumber))
+                updated_centroid_ids.append(centroid_index)
             else:
                 # add candidate parents to list
                 for c in candidate_tracks:
@@ -132,14 +136,12 @@ def main():
         # print(f'new_tracks: {new_tracks}')
         # print(f'all_candidate_tracks: {all_candidate_tracks}')
 
-        updated_track_ids = []
-
-
         # update active AerialTracks, starting with the shortest radius first
         while all_candidate_tracks:
             centroid_index, track_index, distance = all_candidate_tracks[0]
             active_tracks[track_index].update(centroids_in_frame[centroid_index])
             updated_track_ids.append(track_index)
+            updated_centroid_ids.append(centroid_index)
 
             # print(f'\tcentroid_index: {centroid_index}, track_index: {track_index}')
 
@@ -147,6 +149,15 @@ def main():
             # can no longer use "centroids_in_frame[centroid_index]"
             all_candidate_tracks = [ct for ct in all_candidate_tracks if centroid_index != ct[0] and track_index != ct[1]]
             # print(f'\tall_candidate_tracks: {all_candidate_tracks}')
+
+        if len(centroids_in_frame) > len(updated_centroid_ids):
+            for centroid_index, centroid in enumerate(centroids_in_frame):
+                if centroid_index not in updated_centroid_ids:
+                    new_tracks.append(AerialTrack(centroid, frameNumber))
+                    updated_centroid_ids.append(centroid_index)
+        
+        if len(centroids_in_frame) > len(updated_centroid_ids):
+            print('\tlen(centroids_in_frame) > len(updated_centroid_ids): ' + f'{len(centroids_in_frame)} > {len(updated_centroid_ids)}')
 
 
         # copy, then remove stale tracks
@@ -176,13 +187,14 @@ def main():
 
 
     # only care about aerial objects that appear for at least x tracks
-    long_tracks = list(filter(lambda o: o.lifetime >= 30, stale_tracks))
-    long_tracks.sort(key=lambda o: o.lifetime)
+    min_frames = 100
+    long_tracks = list(filter(lambda o: o.lifetime >= min_frames, stale_tracks))
+    long_tracks.sort(key=lambda o: o.lifetime, reverse=True)
 
-    for track in long_tracks:
-        print(track)
+    # for track in long_tracks:
+    #     print(track)
 
-    print(f'{len(long_tracks)} tracks found (min 5 frames)')  
+    print(f'{len(long_tracks)} tracks found (min {min_frames} frames)')  
     np.save('tracks.npy', long_tracks)
     
 
