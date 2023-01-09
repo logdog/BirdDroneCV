@@ -11,15 +11,15 @@ def main():
 
     centroidHistory = []
 
-    # save these
-    frameRecording = cv.VideoWriter('frameRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
-    maskRecording = cv.VideoWriter('maskRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    # save videos to curent folder
+    frameRecording = cv.VideoWriter('output/frameRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    maskRecording = cv.VideoWriter('output/maskRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
 
     # create background subtractor
     backSub = cv.createBackgroundSubtractorMOG2()
 
     # load video
-    videoPath = r'E:\research\birdDrone\droneVideos\flight1.mp4'
+    videoPath = r'E:\research\birdDroneSystem\droneVideos\flight1.mp4'
     capture = cv.VideoCapture(videoPath)
     if not capture.isOpened():
         print('Unable to open: ' + videoPath)
@@ -27,7 +27,7 @@ def main():
 
     # loop through 60 frames of the video
     for i in range(3000):
-        ret, frame = capture.read()
+        _, frame = capture.read()
         if frame is None:
             break
 
@@ -39,7 +39,7 @@ def main():
         gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
         blur = cv.GaussianBlur(gray, (3,3), 1)
         fgMask = backSub.apply(blur, learningRate=0.006)
-        _,fgMask = cv.threshold(fgMask, 1, 255, cv.THRESH_BINARY)
+        _, fgMask = cv.threshold(fgMask, 1, 255, cv.THRESH_BINARY)
 
         # train on 30 frame (1 second of data)
         if i < 500:
@@ -103,7 +103,7 @@ def main():
             return
 
     centroidHistory = np.asanyarray(centroidHistory, dtype=object)
-    np.save('centroidHistory', centroidHistory)
+    np.save('output/centroidHistory', centroidHistory)
 
     frameRecording.release()
     maskRecording.release()

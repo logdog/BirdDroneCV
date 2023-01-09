@@ -20,6 +20,12 @@ class Centroid:
     def __repr__(self):
         return f'c=({self.point[0]}, {self.point[1]}, {self.area})'
 
+    def __array__(self, dtype=None):
+        return np.array([self.point[0], self.point[1], self.area])
+
+    def __getitem__(self, index):
+        return self.__array__()[index]
+
 class AerialTrack:
     def __init__(self, centroid, frameNum):
         self.centroids = [centroid]
@@ -49,7 +55,16 @@ class AerialTrack:
     
     def __repr__(self):
        return f'AT=(start: {self.startFrame}, Lifetime: {self.lifetime})'
-       return f'AT={self.centroids}'
+       # return f'AT={self.centroids}'
+
+    def __getitem__(self, index):
+        return self.centroids[index]
+
+    def __array__(self, dtype=None):
+        # create a 2D array, where each row is a centroid (converted to an array)
+        return np.array([
+            np.array(x) for x in self.centroids
+        ])
 
 ###########################################################################################
 ##                                 Algorithm Pseudocode                                  ##
@@ -71,7 +86,7 @@ class AerialTrack:
         # Note: depth search only goes back 1 frame
 ###########################################################################################
 def main():
-    centroidHistory = np.load('centroidHistory.npy',allow_pickle=True)
+    centroidHistory = np.load('output/centroidHistory.npy',allow_pickle=True)
     
     # active means track was updated last frame
     stale_tracks = []
@@ -195,7 +210,7 @@ def main():
     #     print(track)
 
     print(f'{len(long_tracks)} tracks found (min {min_frames} frames)')  
-    np.save('tracks.npy', long_tracks)
+    np.save('output/tracks.npy', long_tracks)
     
 
 if __name__ == "__main__":

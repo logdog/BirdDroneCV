@@ -3,11 +3,12 @@ import cv2 as cv
 from findTracks import Centroid, AerialTrack
 
 def main():
-    tracks = np.load('tracks.npy',allow_pickle=True)
+    tracks = np.load('output/tracks.npy',allow_pickle=True)
 
-    trackerRecording = cv.VideoWriter('trackerRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    #trackerRecording = cv.VideoWriter('output/trackerRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    trackerRecordingFS = cv.VideoWriter('output/trackerRecordingFS.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (1920,1080))
     # load video
-    videoPath = r'E:\research\birdDrone\droneVideos\flight1.mp4'
+    videoPath = r'E:\research\birdDroneSystem\droneVideos\flight1.mp4'
     capture = cv.VideoCapture(videoPath)
     if not capture.isOpened():
         print('Unable to open: ' + videoPath)
@@ -48,14 +49,16 @@ def main():
   
         # resize image
         resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
-        cv.imshow('Frame', resizedFrame)
-        trackerRecording.write(resizedFrame)
+        #cv.imshow('Frame', resizedFrame)
+        #trackerRecording.write(resizedFrame)
+        trackerRecordingFS.write(frame)
 
         keyboard = cv.waitKey(10)
         if keyboard == ord('q'):
             return
 
-    trackerRecording.release()
+    #trackerRecording.release()
+    trackerRecordingFS.release()
 
 if __name__ == "__main__":
     main()
