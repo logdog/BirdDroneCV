@@ -1,10 +1,5 @@
-from cgitb import reset
-from json.encoder import INFINITY
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-
 import cv2 as cv
+import numpy as np
 
 class Centroid:
     def __init__(self, x, y, area):
@@ -66,14 +61,116 @@ class AerialTrack:
             np.array(x) for x in self.centroids
         ])
 
-###########################################################################################
-##                                 Algorithm Pseudocode                                  ##
-###########################################################################################
-# for each frame
-    # MERGE CENTROIDS where distance between centroids < epsilon
-        # need to find distances between all centroids,
-        # then eliminate the smaller centroid based on area
+video_path = r'E:\research\birdDroneSystem\droneVideos\flight1.mp4'
 
+FRAME_SKIP = 400    # skip all frames before this frame number
+FRAME_START = 500   # begin to find contours at this frame number
+FRAME_END = 3000    # stop analyzing the video at this frame number
+
+def get_centroids():
+    centroidHistory = []
+    MIN_RADIUS = 1.5
+
+    # save videos to curent folder
+    # frameRecording = cv.VideoWriter('output/frameRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    # maskRecording = cv.VideoWriter('output/maskRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+
+    # create background subtractor
+    backSub = cv.createBackgroundSubtractorMOG2()
+
+    # load video
+    capture = cv.VideoCapture(video_path)
+    if not capture.isOpened():
+        print('Unable to open: ' + video_path)
+        exit(0)
+
+    # loop through frames of the video
+    for i in range(FRAME_END):
+        _, frame = capture.read()
+        if frame is None:
+            break
+
+        # skip the first few frames
+        print(i)
+        if i < FRAME_SKIP:
+            continue
+
+        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        blur = cv.GaussianBlur(gray, (3,3), 1)
+        fgMask = backSub.apply(blur, learningRate=0.006)
+        _, fgMask = cv.threshold(fgMask, 1, 255, cv.THRESH_BINARY)
+
+        # train on 30 frame (1 second of data)
+        if i < FRAME_START:
+            continue
+
+        # once the background subtractor has been trained, start processessing the images
+        contours, _ = cv.findContours(fgMask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        centroids = []
+
+        smaller_i = 0
+
+        # if the camera moves a little bit, thousands of contours are drawn
+        if len(contours) > 3000:
+            print('too many')
+            continue
+
+        for cnt in contours:
+            _, r = cv.minEnclosingCircle(cnt)
+
+            if r >= MIN_RADIUS:
+                smaller_i += 1
+                M = cv.moments(cnt)
+                if (M['m00'] == 0):
+                    continue
+
+                # calculate centroid
+                cx = int(M['m10']/M['m00'])
+                cy = int(M['m01']/M['m00'])
+
+                cv.circle(frame, (cx,cy), int(6+r), (0,0,255),3)
+                cv.putText(frame, f'{smaller_i}', (cx,cy), cv.FONT_HERSHEY_PLAIN, 1.4, (0,255,0), 2)
+
+                # add centroids for this frame
+                centroid = Centroid(cx,cy,np.pi*r**2)
+                centroids.append(centroid)
+
+        centroidHistory.append(centroids)
+        
+        # ========== OUTPUT VIDEO =============== #
+        # cv.putText(frame, f'{i}', (0,20), cv.FONT_HERSHEY_PLAIN, 1.4, (255,255,0), 2)
+
+        # resize the images 
+        # width = int(frame.shape[1] * 0.5)
+        # height = int(frame.shape[0] * 0.5)
+        # dim = (width, height)
+  
+        # resize image
+        # resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
+        # resizedMask = cv.resize(fgMask, dim, interpolation=cv.INTER_AREA)
+
+        # convert black and white to a "color" image to save to video
+        # resizedMask = cv.merge([resizedMask,resizedMask,resizedMask])
+
+        # cv.imshow('Frame', resizedFrame)
+        # cv.imshow('FG Mask', resizedMask)
+
+        # frameRecording.write(resizedFrame)
+        # maskRecording.write(resizedMask)
+        
+        #keyboard = cv.waitKey(0)
+        # keyboard = cv.waitKey(5)
+        # if keyboard == ord('q'):
+        #     return
+
+    # frameRecording.release()
+    # maskRecording.release()
+    return centroidHistory
+
+def find_tracks(centroid_history):
+    print('find_tracks()')
+
+# for each frame
     # UPDATE AerialTracks
         # for each remaining centroid in this frame
             # loop over AerialTracks that can update (last update was previous frame)
@@ -84,39 +181,16 @@ class AerialTrack:
         # continue until the list is empty or every AerialTrack has been updated
         # the remaining centroids are new AerialTracks
         # Note: depth search only goes back 1 frame
-###########################################################################################
-def main():
-    centroidHistory = np.load('output/centroidHistory.npy',allow_pickle=True)
     
     # active means track was updated last frame
     stale_tracks = []
     active_tracks = []
 
-    EPSILON = 0
     DELTA = 20
 
-    for frameNumber, centroids_in_frame in enumerate(centroidHistory):
+    for frameNumber, centroids_in_frame in enumerate(centroid_history):
+        print(frameNumber)
         
-        # MERGE CENTROIDS
-        # indices = set()
-        # for i, centroid_i in enumerate(centroids_in_frame):
-        #     for j, centroid_j in enumerate(centroids_in_frame, start=i):
-
-        #         # check distance between points is less than epsilon
-        #         if centroid_i.distanceTo(centroid_j) < EPSILON:
-                    
-        #             # flag the smaller contour for deletion
-        #             if centroid_i < centroid_j:
-        #                 indices.add(i)
-        #             else:
-        #                 indices.add(j)
-
-        # # remove the smaller centroids
-        # indices = sorted(list(indices), reverse=True)
-        # for idx in indices:
-        #     if idx < len(centroids_in_frame):
-        #         centroids_in_frame.pop(idx)
-
         # UPDATE CENTROIDS
         # print(f'\nFrame Number = {frameNumber}')
         new_tracks = []
@@ -174,7 +248,6 @@ def main():
         if len(centroids_in_frame) > len(updated_centroid_ids):
             print('\tlen(centroids_in_frame) > len(updated_centroid_ids): ' + f'{len(centroids_in_frame)} > {len(updated_centroid_ids)}')
 
-
         # copy, then remove stale tracks
         # print(f'Updated {len(updated_track_ids)} tracks')
         for track_index in range(len(active_tracks)):
@@ -200,18 +273,81 @@ def main():
     for track in active_tracks:
         stale_tracks.append(track)
 
-
     # only care about aerial objects that appear for at least x tracks
     min_frames = 100
     long_tracks = list(filter(lambda o: o.lifetime >= min_frames, stale_tracks))
     long_tracks.sort(key=lambda o: o.lifetime, reverse=True)
+    print(f'{len(long_tracks)} tracks found (min {min_frames} frames)')
 
-    # for track in long_tracks:
-    #     print(track)
+    return long_tracks
 
-    print(f'{len(long_tracks)} tracks found (min {min_frames} frames)')  
-    np.save('output/tracks.npy', long_tracks)
+# overlay the tracks on the original video
+def show_tracks(tracks):
+    print('show_tracks()')
+
+    #trackerRecording = cv.VideoWriter('output/trackerRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    trackerRecordingFS = cv.VideoWriter('output/trackerRecordingFS.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (1920,1080))
     
+    # load video
+    capture = cv.VideoCapture(video_path)
+    if not capture.isOpened():
+        print('Unable to open: ' + video_path)
+        exit(0)
+
+    # loop through frames of the video
+    for i in range(FRAME_END):
+        print(i)
+        _, frame = capture.read()  
+        if frame is None:
+            break
+
+        # skip the first few frames
+        if i < FRAME_START:
+            continue
+        
+        frameNum = i - FRAME_START # frameNum is relative to FRAME_START
+        for track_id, track in enumerate(tracks):
+            if centroid := track.getCentroid(frameNum):
+                col = (187*(track_id+1)%255,287*(track_id+1)%255,387*(track_id+1)%255) # color
+                radius = 4+int(np.sqrt(centroid.area/np.pi))
+                cv.circle(frame, centroid.point, radius, col,2)
+                cv.putText(frame, f'{track_id}', centroid.point+(2,0)+(radius,0), cv.FONT_HERSHEY_PLAIN, 2, col, 2)
+
+                # draw trail (super hacky)
+                for i in range(frameNum - track.startFrame - 1):
+                    if i+1 >= len(track.centroids):
+                        break
+                    c0 = track.centroids[i]
+                    c1 = track.centroids[i+1]
+                    cv.line(frame, c0.point, c1.point, col, 2)
+                    
+        # resize the images 
+        width = int(frame.shape[1] * 0.5)
+        height = int(frame.shape[0] * 0.5)
+        dim = (width, height)
+  
+        # resize image
+        resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
+        cv.imshow('Frame', resizedFrame)
+
+        #trackerRecording.write(resizedFrame)
+        trackerRecordingFS.write(frame)
+
+        keyboard = cv.waitKey(10)
+        if keyboard == ord('q'):
+            return
+
+    #trackerRecording.release()
+    trackerRecordingFS.release()
+    cv.destroyAllWindows()
+
+def main():
+    centroids = get_centroids()
+    long_tracks = find_tracks(centroids)
+    
+    input('Press Enter to show video')
+    show_tracks(long_tracks)
 
 if __name__ == "__main__":
     main()
+    cv.destroyAllWindows()
