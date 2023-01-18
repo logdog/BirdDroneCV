@@ -1,3 +1,4 @@
+import os
 import cv2 as cv
 import numpy as np
 
@@ -63,17 +64,18 @@ class AerialTrack:
 
 video_path = r'E:\research\birdDroneSystem\droneVideos\flight1.mp4'
 
-FRAME_SKIP = 400    # skip all frames before this frame number
-FRAME_START = 500   # begin to find contours at this frame number
-FRAME_END = 3000    # stop analyzing the video at this frame number
+FRAME_SKIP = 500    # skip all frames before this frame number
+FRAME_START = 600   # begin to find contours at this frame number
+FRAME_END = 7309    # stop analyzing the video at this frame number (use videoStats.py to determine video length)
 
 def get_centroids():
+    print('get_centroids()')
     centroidHistory = []
     MIN_RADIUS = 1.5
 
     # save videos to curent folder
-    # frameRecording = cv.VideoWriter('output/frameRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
-    # maskRecording = cv.VideoWriter('output/maskRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
+    frameRecording = cv.VideoWriter('output/frameRecording.mp4', cv.VideoWriter_fourcc(*'mp4v'), 30, (960,540))
+    maskRecording = cv.VideoWriter('output/maskRecording.mp4', cv.VideoWriter_fourcc(*'mp4v'), 30, (960,540))
 
     # create background subtractor
     backSub = cv.createBackgroundSubtractorMOG2()
@@ -85,13 +87,13 @@ def get_centroids():
         exit(0)
 
     # loop through frames of the video
-    for i in range(FRAME_END):
+    for i in range(FRAME_END+1):
+        print(f'Frame: {i}/{FRAME_END}',end='\r')
         _, frame = capture.read()
         if frame is None:
             break
 
         # skip the first few frames
-        print(i)
         if i < FRAME_SKIP:
             continue
 
@@ -112,7 +114,8 @@ def get_centroids():
 
         # if the camera moves a little bit, thousands of contours are drawn
         if len(contours) > 3000:
-            print('too many')
+            print('\ntoo many contours... skipping')
+            centroidHistory.append([])
             continue
 
         for cnt in contours:
@@ -138,37 +141,35 @@ def get_centroids():
         centroidHistory.append(centroids)
         
         # ========== OUTPUT VIDEO =============== #
-        # cv.putText(frame, f'{i}', (0,20), cv.FONT_HERSHEY_PLAIN, 1.4, (255,255,0), 2)
+        # cv.putText(frame, f'{i}', (0,30), cv.FONT_HERSHEY_PLAIN, 1.4, (255,255,0), 2)
 
         # resize the images 
-        # width = int(frame.shape[1] * 0.5)
-        # height = int(frame.shape[0] * 0.5)
-        # dim = (width, height)
-  
-        # resize image
-        # resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
-        # resizedMask = cv.resize(fgMask, dim, interpolation=cv.INTER_AREA)
+        width = int(frame.shape[1] * 0.5)
+        height = int(frame.shape[0] * 0.5)
+        dim = (width, height)
+
+        resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
+        resizedMask = cv.resize(fgMask, dim, interpolation=cv.INTER_AREA)
 
         # convert black and white to a "color" image to save to video
-        # resizedMask = cv.merge([resizedMask,resizedMask,resizedMask])
+        resizedMask = cv.merge([resizedMask,resizedMask,resizedMask])
 
+        frameRecording.write(resizedFrame)
+        maskRecording.write(resizedMask)
+        
         # cv.imshow('Frame', resizedFrame)
         # cv.imshow('FG Mask', resizedMask)
-
-        # frameRecording.write(resizedFrame)
-        # maskRecording.write(resizedMask)
-        
-        #keyboard = cv.waitKey(0)
         # keyboard = cv.waitKey(5)
         # if keyboard == ord('q'):
         #     return
 
-    # frameRecording.release()
-    # maskRecording.release()
+    frameRecording.release()
+    maskRecording.release()
+    cv.destroyAllWindows()
     return centroidHistory
 
 def find_tracks(centroid_history):
-    print('find_tracks()')
+    print('\nfind_tracks()')
 
 # for each frame
     # UPDATE AerialTracks
@@ -189,7 +190,7 @@ def find_tracks(centroid_history):
     DELTA = 20
 
     for frameNumber, centroids_in_frame in enumerate(centroid_history):
-        print(frameNumber)
+        print(f'Frame: {FRAME_START+frameNumber}/{FRAME_END}',end='\r')
         
         # UPDATE CENTROIDS
         # print(f'\nFrame Number = {frameNumber}')
@@ -246,7 +247,7 @@ def find_tracks(centroid_history):
                     updated_centroid_ids.append(centroid_index)
         
         if len(centroids_in_frame) > len(updated_centroid_ids):
-            print('\tlen(centroids_in_frame) > len(updated_centroid_ids): ' + f'{len(centroids_in_frame)} > {len(updated_centroid_ids)}')
+            print('\n\tlen(centroids_in_frame) > len(updated_centroid_ids): ' + f'{len(centroids_in_frame)} > {len(updated_centroid_ids)}')
 
         # copy, then remove stale tracks
         # print(f'Updated {len(updated_track_ids)} tracks')
@@ -277,7 +278,7 @@ def find_tracks(centroid_history):
     min_frames = 100
     long_tracks = list(filter(lambda o: o.lifetime >= min_frames, stale_tracks))
     long_tracks.sort(key=lambda o: o.lifetime, reverse=True)
-    print(f'{len(long_tracks)} tracks found (min {min_frames} frames)')
+    print(f'\n{len(long_tracks)} tracks found (min {min_frames} frames)')
 
     return long_tracks
 
@@ -285,8 +286,8 @@ def find_tracks(centroid_history):
 def show_tracks(tracks):
     print('show_tracks()')
 
-    #trackerRecording = cv.VideoWriter('output/trackerRecording.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (960,540))
-    trackerRecordingFS = cv.VideoWriter('output/trackerRecordingFS.avi', cv.VideoWriter_fourcc(*'MJPG'), 30, (1920,1080))
+    trackerRecording = cv.VideoWriter('output/trackerRecording.mp4', cv.VideoWriter_fourcc(*'mp4v'), 30, (960,540))
+    trackerRecordingFS = cv.VideoWriter('output/trackerRecordingFS.mp4', cv.VideoWriter_fourcc(*'mp4v'), 30, (1920,1080))
     
     # load video
     capture = cv.VideoCapture(video_path)
@@ -295,8 +296,8 @@ def show_tracks(tracks):
         exit(0)
 
     # loop through frames of the video
-    for i in range(FRAME_END):
-        print(i)
+    for i in range(FRAME_END+1):
+        print(f'Frame: {i}/{FRAME_END}',end='\r')
         _, frame = capture.read()  
         if frame is None:
             break
@@ -311,14 +312,15 @@ def show_tracks(tracks):
                 col = (187*(track_id+1)%255,287*(track_id+1)%255,387*(track_id+1)%255) # color
                 radius = 4+int(np.sqrt(centroid.area/np.pi))
                 cv.circle(frame, centroid.point, radius, col,2)
-                cv.putText(frame, f'{track_id}', centroid.point+(2,0)+(radius,0), cv.FONT_HERSHEY_PLAIN, 2, col, 2)
+                cv.putText(frame, f'{track_id}', centroid.point+(2,0)+(radius,0), 
+                    cv.FONT_HERSHEY_PLAIN, 2, col, 2)
 
                 # draw trail (super hacky)
-                for i in range(frameNum - track.startFrame - 1):
-                    if i+1 >= len(track.centroids):
+                for j in range(frameNum - track.startFrame - 1):
+                    if j+1 >= len(track.centroids):
                         break
-                    c0 = track.centroids[i]
-                    c1 = track.centroids[i+1]
+                    c0 = track.centroids[j]
+                    c1 = track.centroids[j+1]
                     cv.line(frame, c0.point, c1.point, col, 2)
                     
         # resize the images 
@@ -328,24 +330,30 @@ def show_tracks(tracks):
   
         # resize image
         resizedFrame = cv.resize(frame, dim, interpolation=cv.INTER_AREA)
-        cv.imshow('Frame', resizedFrame)
+        trackerRecording.write(resizedFrame)
 
-        #trackerRecording.write(resizedFrame)
+        # add the frame number + video title to the full screen recording
+        flightTitle = os.path.basename(video_path).split(".")[0].capitalize()
+        cv.putText(frame, f'{frameNum}/{FRAME_END-FRAME_START-1} ({i}) {flightTitle}', 
+            (0,30), cv.FONT_HERSHEY_PLAIN, 2, (255,255,0), 2)
+
         trackerRecordingFS.write(frame)
 
-        keyboard = cv.waitKey(10)
-        if keyboard == ord('q'):
-            return
+        # cv.imshow('Frame', resizedFrame)
+        # keyboard = cv.waitKey(10)
+        # if keyboard == ord('q'):
+        #     return
 
-    #trackerRecording.release()
+    trackerRecording.release()
     trackerRecordingFS.release()
     cv.destroyAllWindows()
+    print('\nDone!')
 
 def main():
     centroids = get_centroids()
     long_tracks = find_tracks(centroids)
     
-    input('Press Enter to show video')
+    # input('Press Enter to show video')
     show_tracks(long_tracks)
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ splitScreenRecording = cv.VideoWriter('output/splitScreen.mp4', cv.VideoWriter_f
 
 FRAME_SKIP = 500    # skip all frames before this frame number
 FRAME_START = 600   # begin to find contours at this frame number
-FRAME_END = 3001    # stop analyzing the video at this frame number
+FRAME_END = 7309    # stop analyzing the video at this frame number (use videoStats.py to determine video length)
 
 def main():
 
@@ -33,7 +33,7 @@ def main():
         capture_0.read()
 
     # now read in each frame, and create a split screen with labels
-    for i in range(FRAME_START, FRAME_END):
+    for i in range(FRAME_START, FRAME_END+1):
         _, frame_0 =  capture_0.read()
         _, frame_1 =  capture_1.read()
         _, frame_2 =  capture_2.read()
