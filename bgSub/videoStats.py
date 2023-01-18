@@ -12,6 +12,7 @@ def main():
         exit(0)
 
     print('Video Path: ', video_path)
+    print('FPS: ', capture.get(cv.CAP_PROP_FPS))
 
     # determine how many frames exist
     # and frame size
