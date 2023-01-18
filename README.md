@@ -7,5 +7,6 @@ Videos are captured on my personal Galaxy A52 smartphone at a local park.
 - Zoom Options: 1.0x or 2.0x
 - Footage is uploaded (unlisted) on YouTube
 	- [Full Playlist](https://youtube.com/playlist?list=PLb1f9nCDJiAsfm8RbqX7e2N9pnxOjurvL)
-	- [Flight 1](https://youtu.be/k3W-g_CHPIQ) Birds and HS440 Drone at 1x Zoom (4:30)
-	- [Flight 2](https://youtu.be/khtcggX0Q0Q) HS440 Drone at 2x Zoom (2:30)
+	- [Flight 1 (Original)](https://youtu.be/k3W-g_CHPIQ) Birds and HS440 Drone at 1x Zoom (4:35)
+	- [Flight 1 (Tracking)](https://youtu.be/8mLUSkkq8_A)  (3:43)
+	- [Flight 1 (Split Screen)](https://youtu.be/UAizmBDIHV4) (3:43)
