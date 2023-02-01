@@ -1,6 +1,7 @@
 import os
 import cv2 as cv
 import numpy as np
+from scipy.io import savemat
 
 class Centroid:
     def __init__(self, x, y, area):
@@ -67,6 +68,7 @@ video_path = r'E:\research\birdDroneSystem\droneVideos\flight1.mp4'
 FRAME_SKIP = 500    # skip all frames before this frame number
 FRAME_START = 600   # begin to find contours at this frame number
 FRAME_END = 7309    # stop analyzing the video at this frame number (use videoStats.py to determine video length)
+SHOW_VIDEO = False  # show the video in a separate window (increases runtime significantly)
 
 def get_centroids():
     print('get_centroids()')
@@ -141,8 +143,6 @@ def get_centroids():
         centroidHistory.append(centroids)
         
         # ========== OUTPUT VIDEO =============== #
-        # cv.putText(frame, f'{i}', (0,30), cv.FONT_HERSHEY_PLAIN, 1.4, (255,255,0), 2)
-
         # resize the images 
         width = int(frame.shape[1] * 0.5)
         height = int(frame.shape[0] * 0.5)
@@ -157,11 +157,12 @@ def get_centroids():
         frameRecording.write(resizedFrame)
         maskRecording.write(resizedMask)
         
-        # cv.imshow('Frame', resizedFrame)
-        # cv.imshow('FG Mask', resizedMask)
-        # keyboard = cv.waitKey(5)
-        # if keyboard == ord('q'):
-        #     return
+        if SHOW_VIDEO:
+            cv.imshow('Frame', resizedFrame)
+            cv.imshow('FG Mask', resizedMask)
+            keyboard = cv.waitKey(5)
+            if keyboard == ord('q'):
+                return
 
     frameRecording.release()
     maskRecording.release()
@@ -339,10 +340,11 @@ def show_tracks(tracks):
 
         trackerRecordingFS.write(frame)
 
-        # cv.imshow('Frame', resizedFrame)
-        # keyboard = cv.waitKey(10)
-        # if keyboard == ord('q'):
-        #     return
+        if SHOW_VIDEO:
+            cv.imshow('Frame', resizedFrame)
+            keyboard = cv.waitKey(10)
+            if keyboard == ord('q'):
+                return
 
     trackerRecording.release()
     trackerRecordingFS.release()
@@ -352,6 +354,14 @@ def show_tracks(tracks):
 def main():
     centroids = get_centroids()
     long_tracks = find_tracks(centroids)
+
+    # save tracks to MATLAB (.mat)
+    mydict = {}
+    for i, track in enumerate(long_tracks):
+        mydict[f'track_{i}'] = np.array(track)
+    
+    flightTitle = os.path.basename(video_path).split(".")[0].capitalize()
+    savemat(f'output/{flightTitle}.mat', mydict)
     
     # input('Press Enter to show video')
     show_tracks(long_tracks)
